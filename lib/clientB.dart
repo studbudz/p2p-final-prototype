@@ -18,6 +18,19 @@ import 'package:flutter/material.dart'; // Flutter import for UI components
 10. Communicate with client A
 */
 
+/*
+Definitions and clarifications:
+
+Server forwards data based on the signal type. This is defined by You e.g 'welcome'
+.listen continuously checks for messages
+
+- callback -> a function that is called when a certain event occurs
+- remote description -> a description of the remote peer connection (don't know why we need it)
+- ICE -> Interactive Connectivity Establishment is a protocol that helps peers determine the best network path for communication.
+- ICE candidate -> a possible network path for communication
+
+*/
+
 class ClientB {
   String clientId = '';
   late WebSocketChannel _channel;
@@ -80,7 +93,8 @@ class ClientB {
   }
 
   void main() async {
-    WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter bindings are initialized
+    WidgetsFlutterBinding
+        .ensureInitialized(); // Ensure Flutter bindings are initialized
     await Future.delayed(Duration(seconds: 1));
     ClientB clientB = ClientB();
     // Keep program alive
