@@ -35,7 +35,7 @@ void handleConnection(WebSocket socket) {
 
   socket.listen(
     (message) {
-      print('Received message: $message');
+      // print('Received message: $message');
       var data = jsonDecode(message);
       switch (data['type']) {
         case 'signal':
