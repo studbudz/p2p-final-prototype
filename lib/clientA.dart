@@ -62,6 +62,11 @@ class ClientA {
           print('Client A Received connected signal from B');
           _createPeerConnection();
           break;
+        case 'answer':
+          _handleAnswer(data);
+          break;
+        default:
+          print('Unknown message type: ${data['type']}');
       }
     } catch (error) {
       print('Error: $error'); // Uncomment to see the error
@@ -92,6 +97,19 @@ class ClientA {
       'chat',
       RTCDataChannelInit(),
     );
+
+    RTCSessionDescription offer = await _peerConnection!.createOffer();
+
+    await _peerConnection!.setLocalDescription(offer);
+
+    _sendSignal(offer.toMap(), 'offer');
+  }
+
+  void _handleAnswer(data) async {
+    print('Client A Received answer');
+    await _peerConnection!.setRemoteDescription(
+      RTCSessionDescription(data['data']['sdp'], 'answer'),
+    );
   }
 
   //definitions for callbacks
@@ -104,11 +122,22 @@ class ClientA {
     print('Client A Received ICE candidate');
     _peerConnection!.addCandidate(candidate);
   }
+
+  void _sendSignal(dynamic data, String type) {
+    print('sending signal');
+    _channel.sink.add(
+      jsonEncode({
+        'type': type,
+        'target': 'clientB',
+        'from': 'clientA',
+        'data': data,
+      }),
+    );
+  }
 }
 
 void main() async {
-  WidgetsFlutterBinding
-      .ensureInitialized(); // Ensure Flutter bindings are initialized
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter bindings are initialized
   await Future.delayed(Duration(seconds: 1));
   ClientA clientA = ClientA();
   // Keep program alive

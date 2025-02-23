@@ -35,19 +35,17 @@ void handleConnection(WebSocket socket) {
 
   socket.listen(
     (message) {
+      print('Received message: $message');
       var data = jsonDecode(message);
       switch (data['type']) {
         case 'signal':
-          String targetId = data['target'];
-          if (clients.containsKey(targetId)) {
-            clients[targetId]!.add(
-              jsonEncode({
-                'type': 'signal',
-                'from': clientId,
-                'data': data['data'],
-              }),
-            );
-          }
+          forward(data, clientId, 'signal');
+          break;
+        case 'offer':
+          forward(data, clientId, 'offer');
+          break;
+        case 'answer':
+          forward(data, clientId, 'answer');
           break;
         default:
           print('Unknown message type: ${data['type']}');
@@ -58,6 +56,15 @@ void handleConnection(WebSocket socket) {
       print('Client disconnected: $clientId');
     },
   );
+}
+
+void forward(data, clientId, String type) {
+  String targetId = data['target'];
+  if (clients.containsKey(targetId)) {
+    clients[targetId]!.add(
+      jsonEncode({'type': type, 'from': clientId, 'data': data['data']}),
+    );
+  }
 }
 
 String generateClientId() {

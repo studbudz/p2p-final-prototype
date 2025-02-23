@@ -28,8 +28,10 @@ Server forwards data based on the signal type. This is defined by You e.g 'welco
 - remote description -> a description of the remote peer connection (don't know why we need it)
 - ICE -> Interactive Connectivity Establishment is a protocol that helps peers determine the best network path for communication.
 - ICE candidate -> a possible network path for communication
-
 */
+
+//ONLY NEED TO IMPLEMENT THE FOLLOWING:
+//ICE CANDIDATE HANDLING
 
 class ClientB {
   String clientId = '';
@@ -57,6 +59,11 @@ class ClientB {
           print('Client B Received client ID: $clientId');
           _createPeerConnection();
           break;
+        case 'offer':
+          _handleOffer(data);
+          break;
+        default:
+          print('Unknown message type: ${data['type']}');
       }
     } catch (error) {
       print('Error: $error'); // Uncomment to see the error
@@ -81,6 +88,18 @@ class ClientB {
     _peerConnection!.onDataChannel = _onDataChannel;
   }
 
+  void _handleOffer(data) async {
+    print('Client B Received offer');
+    // print(data['data']);
+    await _peerConnection!.setRemoteDescription(
+      RTCSessionDescription(data['data']['sdp'], 'offer'),
+    );
+
+    RTCSessionDescription answer = await _peerConnection!.createAnswer();
+    await _peerConnection!.setLocalDescription(answer);
+    _sendSignal(answer.toMap(), 'answer');
+  }
+
   //definitions for callbacks
   void _onDataChannel(RTCDataChannel channel) {
     print('Client B Received data channel');
@@ -92,12 +111,23 @@ class ClientB {
     _peerConnection!.addCandidate(candidate);
   }
 
-  void main() async {
-    WidgetsFlutterBinding
-        .ensureInitialized(); // Ensure Flutter bindings are initialized
-    await Future.delayed(Duration(seconds: 1));
-    ClientB clientB = ClientB();
-    // Keep program alive
-    await Future.delayed(Duration(days: 1));
+  void _sendSignal(dynamic data, String type) {
+    print('sending signal');
+    _channel.sink.add(
+      jsonEncode({
+        'type': type,
+        'target': 'clientA',
+        'from': 'clientB',
+        'data': data,
+      }),
+    );
   }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter bindings are initialized
+  await Future.delayed(Duration(seconds: 1));
+  ClientB clientB = ClientB();
+  // Keep program alive
+  await Future.delayed(Duration(days: 1));
 }
