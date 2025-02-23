@@ -9,7 +9,7 @@ final int port = 8080;
 void main() async {
   //listens for HTTP requests on that specific address at that port.
   HttpServer server = await HttpServer.bind(address, port);
-  print('Websocket Listening on $address:${port}');
+  print('server listening on $address:${port}');
 
   await for (HttpRequest request in server) {
     if (WebSocketTransformer.isUpgradeRequest(request)) {
