@@ -47,6 +47,9 @@ void handleConnection(WebSocket socket) {
         case 'answer':
           forward(data, clientId, 'answer');
           break;
+        case 'ice_candidate':
+          forward(data, clientId, 'ice_candidate');
+          break;
         default:
           print('Unknown message type: ${data['type']}');
       }

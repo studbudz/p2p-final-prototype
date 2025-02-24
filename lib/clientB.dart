@@ -53,6 +53,7 @@ class ClientB {
   void _handleSignal(message) {
     try {
       var data = jsonDecode(message);
+      print('Client B Received signal: $data');
       switch (data['type']) {
         case 'welcome':
           clientId = data['id'];
@@ -61,7 +62,9 @@ class ClientB {
           break;
         case 'offer':
           _handleOffer(data);
+          break;
         case 'ice_candidate':
+          print('Client B Received ICE candidate');
           _handleIceCandidate(data['data']['candidate']);
           break;
         default:
@@ -84,6 +87,10 @@ class ClientB {
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         print('Client B: ICE candidate: ${candidate.toMap()}');
         _sendSignal({'candidate': candidate.toMap()}, 'ice_candidate');
+      };
+
+      _peerConnection!.onIceConnectionState = (RTCIceConnectionState state) {
+        print('Client B ICE Connection State: $state');
       };
 
       print('Peer connection created successfully');
@@ -121,8 +128,14 @@ class ClientB {
   void _onDataChannel(RTCDataChannel channel) {
     print('Client B Received data channel');
     _dataChannel = channel;
+    print('Data channel ready');
+    _dataChannel!.onDataChannelState = (RTCDataChannelState state) {
+      print('Data channel state: $state');
+      sendMessage('Hello from client B');
+    };
     _dataChannel!.onMessage = (RTCDataChannelMessage message) {
       print('Client B Received message: ${message.text}');
+      sendMessage('Hello from client B');
     };
   }
 
@@ -154,4 +167,8 @@ void main() async {
   ClientB clientB = ClientB();
   // Keep program alive
   await Future.delayed(Duration(days: 1));
+  while (true) {
+    await Future.delayed(Duration(seconds: 1));
+    clientB.sendMessage('Hello from client B');
+  }
 }

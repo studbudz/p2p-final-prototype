@@ -52,20 +52,25 @@ class ClientA {
   void _handleSignal(message) {
     try {
       var data = jsonDecode(message);
+      print('Client A Received signal: $data');
       switch (data['type']) {
+        //1. Receive the client ID from the server
         case 'welcome':
           clientId = data['id'];
           print('Client A Received client ID: $clientId');
           break;
+        //2. client B is connected
         case 'connected':
           connected = true;
           print('Client A Received connected signal from B');
           _createPeerConnection();
           break;
+        //4. Receive an answer from client B
         case 'answer':
           _handleAnswer(data);
           break;
         case 'ice_candidate':
+          print('Client A Received ICE candidate');
           _handleIceCandidate(data['data']['candidate']);
           break;
         default:
@@ -88,6 +93,9 @@ class ClientA {
         print('Client A: ICE candidate: ${candidate.toMap()}');
         _sendSignal({'candidate': candidate.toMap()}, 'ice_candidate');
       };
+      _peerConnection!.onIceConnectionState = (RTCIceConnectionState state) {
+        print('Client A ICE Connection State: $state');
+      };
 
       print('Peer connection created successfully');
     } catch (e, stack) {
@@ -98,13 +106,39 @@ class ClientA {
     _peerConnection!.onDataChannel = (channel) {
       print('Client A Received data channel');
       _dataChannel = channel;
+      print('Data channel ready');
+      _dataChannel!.onDataChannelState = (RTCDataChannelState state) {
+        print('Data channel state: $state');
+      };
+      _dataChannel!.onMessage = (RTCDataChannelMessage message) {
+        print('Client A Received message: ${message.text}');
+      };
     };
 
+    print('Creating data channel.');
     _dataChannel = await _peerConnection!.createDataChannel(
-      'chat',
+      "chat",
       RTCDataChannelInit(),
     );
 
+    _dataChannel!.onMessage = (msg) {
+      print("DEBUG: Data channel message received: ${msg.text}");
+      sendMessage('Hello from client A');
+    };
+
+    _dataChannel!.onDataChannelState = (state) {
+      print("DEBUG: Data channel state changed: $state");
+
+      if (state == RTCDataChannelState.RTCDataChannelOpen) {
+        print("DEBUG: Data channel is open.");
+      } else if (state == RTCDataChannelState.RTCDataChannelClosed) {
+        print("DEBUG: Data channel is closed.");
+      }
+    };
+
+    print("DEBUG: Data channel created (Client A).");
+
+    //3. Create an offer to send to client B
     RTCSessionDescription offer = await _peerConnection!.createOffer();
 
     await _peerConnection!.setLocalDescription(offer);
@@ -140,6 +174,15 @@ class ClientA {
       }),
     );
   }
+
+  void sendMessage(String message) {
+    if (_dataChannel != null) {
+      _dataChannel!.send(RTCDataChannelMessage(message));
+      print('Client A sent message: $message');
+    } else {
+      print('Data channel not established yet');
+    }
+  }
 }
 
 void main() async {
@@ -148,4 +191,8 @@ void main() async {
   ClientA clientA = ClientA();
   // Keep program alive
   await Future.delayed(Duration(days: 1));
+  while (true) {
+    await Future.delayed(Duration(seconds: 1));
+    clientA.sendMessage('Hello from client A');
+  }
 }
