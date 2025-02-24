@@ -65,6 +65,9 @@ class ClientA {
         case 'answer':
           _handleAnswer(data);
           break;
+        case 'ice_candidate':
+          _handleIceCandidate(data['data']['candidate']);
+          break;
         default:
           print('Unknown message type: ${data['type']}');
       }
@@ -81,6 +84,10 @@ class ClientA {
           {'urls': 'stun:stun.l.google.com:19302'},
         ],
       });
+      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        print('Client A: ICE candidate: ${candidate.toMap()}');
+        _sendSignal({'candidate': candidate.toMap()}, 'ice_candidate');
+      };
 
       print('Peer connection created successfully');
     } catch (e, stack) {
@@ -112,14 +119,13 @@ class ClientA {
     );
   }
 
-  //definitions for callbacks
-  void _onDataChannel(RTCDataChannel channel) {
-    print('Client A Received data channel');
-    _dataChannel = channel;
-  }
-
-  void _onIceCandidate(RTCIceCandidate candidate) {
-    print('Client A Received ICE candidate');
+  void _handleIceCandidate(Map<String, dynamic> candidateData) {
+    print("Client A: Received ICE Candidate");
+    RTCIceCandidate candidate = RTCIceCandidate(
+      candidateData['candidate'],
+      candidateData['sdpMid'],
+      candidateData['sdpMLineIndex'],
+    );
     _peerConnection!.addCandidate(candidate);
   }
 

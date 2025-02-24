@@ -61,6 +61,8 @@ class ClientB {
           break;
         case 'offer':
           _handleOffer(data);
+        case 'ice_candidate':
+          _handleIceCandidate(data['data']['candidate']);
           break;
         default:
           print('Unknown message type: ${data['type']}');
@@ -79,10 +81,15 @@ class ClientB {
         ],
       });
 
+      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        print('Client B: ICE candidate: ${candidate.toMap()}');
+        _sendSignal({'candidate': candidate.toMap()}, 'ice_candidate');
+      };
+
       print('Peer connection created successfully');
     } catch (e, stack) {
-      print('Error creating peer connection: $e'); // Uncomment to see the error
-      print(stack); // Uncomment to see stack trace
+      print('Error creating peer connection: $e');
+      print(stack);
     }
 
     _peerConnection!.onDataChannel = _onDataChannel;
@@ -92,7 +99,7 @@ class ClientB {
     print('Client B Received offer');
     // print(data['data']);
     await _peerConnection!.setRemoteDescription(
-      RTCSessionDescription(data['data']['sdp'], 'offer'),
+      RTCSessionDescription(data['data']['sdp'], data['data']['type']),
     );
 
     RTCSessionDescription answer = await _peerConnection!.createAnswer();
@@ -101,14 +108,22 @@ class ClientB {
   }
 
   //definitions for callbacks
+  void _handleIceCandidate(Map<String, dynamic> candidateData) {
+    print("Client B: Received ICE Candidate");
+    RTCIceCandidate candidate = RTCIceCandidate(
+      candidateData['candidate'],
+      candidateData['sdpMid'],
+      candidateData['sdpMLineIndex'],
+    );
+    _peerConnection!.addCandidate(candidate);
+  }
+
   void _onDataChannel(RTCDataChannel channel) {
     print('Client B Received data channel');
     _dataChannel = channel;
-  }
-
-  void _onIceCandidate(RTCIceCandidate candidate) {
-    print('Client B Received ICE candidate');
-    _peerConnection!.addCandidate(candidate);
+    _dataChannel!.onMessage = (RTCDataChannelMessage message) {
+      print('Client B Received message: ${message.text}');
+    };
   }
 
   void _sendSignal(dynamic data, String type) {
@@ -121,6 +136,15 @@ class ClientB {
         'data': data,
       }),
     );
+  }
+
+  void sendMessage(String message) {
+    if (_dataChannel != null) {
+      _dataChannel!.send(RTCDataChannelMessage(message));
+      print('Client B sent message: $message');
+    } else {
+      print('Data channel not established yet');
+    }
   }
 }
 
